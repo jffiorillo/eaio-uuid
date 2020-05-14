@@ -69,7 +69,7 @@ public final class UUIDGen {
     /**
      * The last time value. Used to remove duplicate UUIDs.
      */
-    private static AtomicLong lastTime = new AtomicLong(Long.MIN_VALUE);
+    private static final AtomicLong lastTime = new AtomicLong(Long.MIN_VALUE);
 
     /**
      * The cached MAC address.

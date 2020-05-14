@@ -27,11 +27,11 @@
  */
 package com.eaio.uuid;
 
-import java.io.*;
-
-import org.omg.CORBA.portable.IDLEntity;
-
 import com.eaio.util.lang.Hex;
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 
 /**
  * Creates UUIDs according to the DCE Universal Token Identifier specification.
@@ -41,6 +41,8 @@ import com.eaio.util.lang.Hex;
  * UUID u = new UUID();
  * </pre>
  *
+ * @author <a href="mailto:jb@eaio.de">Johann Burkard</a>
+ * @version $Id: UUID.java 4688 2012-03-09 14:49:49Z johann $
  * @see <a href="http://www.opengroup.org/onlinepubs/9629399/apdxa.htm">
  * http://www.opengroup.org/onlinepubs/9629399/apdxa.htm
  * </a>
@@ -48,265 +50,258 @@ import com.eaio.util.lang.Hex;
  * http://www.uddi.org/pubs/draft-leach-uuids-guids-01.txt
  * </a>
  * @see <a href="http://johannburkard.de/software/uuid/">UUID</a>
- * @author <a href="mailto:jb@eaio.de">Johann Burkard</a>
- * @version $Id: UUID.java 4688 2012-03-09 14:49:49Z johann $
  */
-public class UUID implements Comparable<UUID>, Externalizable, Cloneable,
-        IDLEntity {
+public class UUID implements Comparable<UUID>, Externalizable, Cloneable {
 
-    /**
-     * Hasn't ever changed between versions.
-     */
-    static final long serialVersionUID = 7435962790062944603L;
+  /**
+   * Hasn't ever changed between versions.
+   */
+  static final long serialVersionUID = 7435962790062944603L;
 
-    /**
-     * The time field of the UUID.
-     *
-     * @serial
-     */
-    public long time;
+  /**
+   * The time field of the UUID.
+   *
+   * @serial
+   */
+  public long time;
 
-    /**
-     * The clock sequence and node field of the UUID.
-     *
-     * @serial
-     */
-    public long clockSeqAndNode;
+  /**
+   * The clock sequence and node field of the UUID.
+   *
+   * @serial
+   */
+  public long clockSeqAndNode;
 
-    /**
-     * Constructor for UUID. Constructs a new, unique UUID.
-     *
-     * @see UUIDGen#newTime()
-     * @see UUIDGen#getClockSeqAndNode()
-     */
-    public UUID() {
-        this(UUIDGen.newTime(), UUIDGen.getClockSeqAndNode());
+  /**
+   * Constructor for UUID. Constructs a new, unique UUID.
+   *
+   * @see UUIDGen#newTime()
+   * @see UUIDGen#getClockSeqAndNode()
+   */
+  public UUID() {
+    this(UUIDGen.newTime(), UUIDGen.getClockSeqAndNode());
+  }
+
+  /**
+   * Constructor for UUID. Constructs a UUID from two <code>long</code> values.
+   *
+   * @param time the upper 64 bits
+   * @param clockSeqAndNode the lower 64 bits
+   */
+  public UUID(long time, long clockSeqAndNode) {
+    this.time = time;
+    this.clockSeqAndNode = clockSeqAndNode;
+  }
+
+  /**
+   * Copy constructor for UUID. Values of the given UUID are copied.
+   *
+   * @param u the UUID, may not be <code>null</code>
+   */
+  public UUID(UUID u) {
+    this(u.time, u.clockSeqAndNode);
+  }
+
+  /**
+   * Parses a textual representation of a UUID.
+   * <p>
+   * No validation is performed. If the {@link CharSequence} is shorter than 36 characters,
+   * {@link ArrayIndexOutOfBoundsException}s will be thrown.
+   *
+   * @param s the {@link CharSequence}, may not be <code>null</code>
+   */
+  public UUID(CharSequence s) {
+    this(Hex.parseLong(s.subSequence(0, 18)), Hex.parseLong(s.subSequence(
+        19, 36)));
+  }
+
+  /**
+   * Compares this UUID to another Object. Throws a {@link ClassCastException} if
+   * the other Object is not an instance of the UUID class. Returns a value
+   * smaller than zero if the other UUID is "larger" than this UUID and a value
+   * larger than zero if the other UUID is "smaller" than this UUID.
+   *
+   * @param t the other UUID, may not be <code>null</code>
+   * @return a value &lt; 0, 0 or a value &gt; 0
+   * @throws ClassCastException
+   * @see java.lang.Comparable#compareTo(java.lang.Object)
+   */
+  public int compareTo(UUID t) {
+    if (this == t) {
+      return 0;
     }
-
-    /**
-     * Constructor for UUID. Constructs a UUID from two <code>long</code> values.
-     *
-     * @param time the upper 64 bits
-     * @param clockSeqAndNode the lower 64 bits
-     */
-    public UUID(long time, long clockSeqAndNode) {
-        this.time = time;
-        this.clockSeqAndNode = clockSeqAndNode;
+    if (time > t.time) {
+      return 1;
     }
-
-    /**
-     * Copy constructor for UUID. Values of the given UUID are copied.
-     *
-     * @param u the UUID, may not be <code>null</code>
-     */
-    public UUID(UUID u) {
-        this(u.time, u.clockSeqAndNode);
+    if (time < t.time) {
+      return -1;
     }
-
-    /**
-     * Parses a textual representation of a UUID.
-     * <p>
-     * No validation is performed. If the {@link CharSequence} is shorter than 36 characters,
-     * {@link ArrayIndexOutOfBoundsException}s will be thrown.
-     *
-     * @param s the {@link CharSequence}, may not be <code>null</code>
-     */
-    public UUID(CharSequence s) {
-        this(Hex.parseLong(s.subSequence(0, 18)), Hex.parseLong(s.subSequence(
-                19, 36)));
+    if (clockSeqAndNode > t.clockSeqAndNode) {
+      return 1;
     }
-
-    /**
-     * Compares this UUID to another Object. Throws a {@link ClassCastException} if
-     * the other Object is not an instance of the UUID class. Returns a value
-     * smaller than zero if the other UUID is "larger" than this UUID and a value
-     * larger than zero if the other UUID is "smaller" than this UUID.
-     *
-     * @param t the other UUID, may not be <code>null</code>
-     * @return a value &lt; 0, 0 or a value &gt; 0
-     * @see java.lang.Comparable#compareTo(java.lang.Object)
-     * @throws ClassCastException
-     */
-    public int compareTo(UUID t) {
-        if (this == t) {
-            return 0;
-        }
-        if (time > t.time) {
-            return 1;
-        }
-        if (time < t.time) {
-            return -1;
-        }
-        if (clockSeqAndNode > t.clockSeqAndNode) {
-            return 1;
-        }
-        if (clockSeqAndNode < t.clockSeqAndNode) {
-            return -1;
-        }
-        return 0;
+    if (clockSeqAndNode < t.clockSeqAndNode) {
+      return -1;
     }
+    return 0;
+  }
 
-    /**
-     * Tweaked Serialization routine.
-     */
-    public void writeExternal(ObjectOutput out) throws IOException {
-        out.writeLong(time);
-        out.writeLong(clockSeqAndNode);
+  /**
+   * Tweaked Serialization routine.
+   */
+  public void writeExternal(ObjectOutput out) throws IOException {
+    out.writeLong(time);
+    out.writeLong(clockSeqAndNode);
+  }
+
+  /**
+   * Tweaked Serialization routine.
+   */
+  public void readExternal(ObjectInput in) throws IOException {
+    time = in.readLong();
+    clockSeqAndNode = in.readLong();
+  }
+
+  /**
+   * Returns this UUID as a String.
+   *
+   * @return a String, never <code>null</code>
+   * @see java.lang.Object#toString()
+   * @see #toAppendable(Appendable)
+   */
+  @Override
+  public final String toString() {
+    return toAppendable(null).toString();
+  }
+
+  /**
+   * Appends a String representation of this to the given {@link StringBuffer} or
+   * creates a new one if none is given.
+   *
+   * @param in the StringBuffer to append to, may be <code>null</code>
+   * @return a StringBuffer, never <code>null</code>
+   * @see #toAppendable(Appendable)
+   */
+  public StringBuffer toStringBuffer(StringBuffer in) {
+    StringBuffer out = in;
+    if (out == null) {
+      out = new StringBuffer(36);
+    } else {
+      out.ensureCapacity(out.length() + 36);
     }
+    return (StringBuffer) toAppendable(out);
+  }
 
-    /**
-     * Tweaked Serialization routine.
-     */
-    public void readExternal(ObjectInput in) throws IOException {
-        time = in.readLong();
-        clockSeqAndNode = in.readLong();
+  /**
+   * Appends a String representation of this object to the given {@link Appendable} object.
+   * <p>
+   * For reasons I'll probably never understand, Sun has decided to have a number of I/O classes implement
+   * Appendable which forced them to destroy an otherwise nice and simple interface with {@link IOException}s.
+   * <p>
+   * I decided to ignore any possible IOExceptions in this method.
+   *
+   * @param a the Appendable object, may be <code>null</code>
+   * @return an Appendable object, defaults to a {@link StringBuilder} if <code>a</code> is <code>null</code>
+   */
+  public Appendable toAppendable(Appendable a) {
+    Appendable out = a;
+    if (out == null) {
+      out = new StringBuilder(36);
     }
-
-    /**
-     * Returns this UUID as a String.
-     *
-     * @return a String, never <code>null</code>
-     * @see java.lang.Object#toString()
-     * @see #toAppendable(Appendable)
-     */
-    @Override
-    public final String toString() {
-        return toAppendable(null).toString();
+    try {
+      Hex.append(out, (int) (time >> 32)).append('-');
+      Hex.append(out, (short) (time >> 16)).append('-');
+      Hex.append(out, (short) time).append('-');
+      Hex.append(out, (short) (clockSeqAndNode >> 48)).append('-');
+      Hex.append(out, clockSeqAndNode, 12);
+    } catch (IOException ex) {
+      // What were they thinking?
     }
+    return out;
+  }
 
-    /**
-     * Appends a String representation of this to the given {@link StringBuffer} or
-     * creates a new one if none is given.
-     *
-     * @param in the StringBuffer to append to, may be <code>null</code>
-     * @return a StringBuffer, never <code>null</code>
-     * @see #toAppendable(Appendable)
-     */
-    public StringBuffer toStringBuffer(StringBuffer in) {
-        StringBuffer out = in;
-        if (out == null) {
-            out = new StringBuffer(36);
-        }
-        else {
-            out.ensureCapacity(out.length() + 36);
-        }
-        return (StringBuffer) toAppendable(out);
+  /**
+   * Returns a hash code of this UUID. The hash code is calculated by XOR'ing the
+   * upper 32 bits of the time and clockSeqAndNode fields and the lower 32 bits of
+   * the time and clockSeqAndNode fields.
+   *
+   * @return an <code>int</code> representing the hash code
+   * @see java.lang.Object#hashCode()
+   */
+  @Override
+  public int hashCode() {
+    return (int) ((time >> 32) ^ time ^ (clockSeqAndNode >> 32) ^ clockSeqAndNode);
+  }
+
+  /**
+   * Clones this UUID.
+   *
+   * @return a new UUID with identical values, never <code>null</code>
+   */
+  @Override
+  public Object clone() {
+    try {
+      return super.clone();
+    } catch (CloneNotSupportedException ex) {
+      // One of Sun's most epic fails.
+      return null;
     }
+  }
 
-    /**
-     * Appends a String representation of this object to the given {@link Appendable} object.
-     * <p>
-     * For reasons I'll probably never understand, Sun has decided to have a number of I/O classes implement
-     * Appendable which forced them to destroy an otherwise nice and simple interface with {@link IOException}s.
-     * <p>
-     * I decided to ignore any possible IOExceptions in this method.
-     *
-     * @param a the Appendable object, may be <code>null</code>
-     * @return an Appendable object, defaults to a {@link StringBuilder} if <code>a</code> is <code>null</code>
-     */
-    public Appendable toAppendable(Appendable a) {
-        Appendable out = a;
-        if (out == null) {
-            out = new StringBuilder(36);
-        }
-        try {
-            Hex.append(out, (int) (time >> 32)).append('-');
-            Hex.append(out, (short) (time >> 16)).append('-');
-            Hex.append(out, (short) time).append('-');
-            Hex.append(out, (short) (clockSeqAndNode >> 48)).append('-');
-            Hex.append(out, clockSeqAndNode, 12);
-        }
-        catch (IOException ex) {
-            // What were they thinking?
-        }
-        return out;
+  /**
+   * Returns the time field of the UUID (upper 64 bits).
+   *
+   * @return the time field
+   */
+  public final long getTime() {
+    return time;
+  }
+
+  /**
+   * Returns the clock and node field of the UUID (lower 64 bits).
+   *
+   * @return the clockSeqAndNode field
+   */
+  public final long getClockSeqAndNode() {
+    return clockSeqAndNode;
+  }
+
+  /**
+   * Compares two Objects for equality.
+   *
+   * @param obj the Object to compare this UUID with, may be <code>null</code>
+   * @return <code>true</code> if the other Object is equal to this UUID,
+   * <code>false</code> if not
+   * @see java.lang.Object#equals(Object)
+   */
+  @Override
+  public boolean equals(Object obj) {
+    if (!(obj instanceof UUID)) {
+      return false;
     }
+    return compareTo((UUID) obj) == 0;
+  }
 
-    /**
-     * Returns a hash code of this UUID. The hash code is calculated by XOR'ing the
-     * upper 32 bits of the time and clockSeqAndNode fields and the lower 32 bits of
-     * the time and clockSeqAndNode fields.
-     *
-     * @return an <code>int</code> representing the hash code
-     * @see java.lang.Object#hashCode()
-     */
-    @Override
-    public int hashCode() {
-        return (int) ((time >> 32) ^ time ^ (clockSeqAndNode >> 32) ^ clockSeqAndNode);
-    }
+  /**
+   * Returns the nil UUID (a UUID whose values are both set to zero).
+   * <p>
+   * Starting with version 2.0, this method does return a new UUID instance every
+   * time it is called. Earlier versions returned one instance. This has now been
+   * changed because this UUID has public, non-final instance fields. Returning a
+   * new instance is therefore more safe.
+   *
+   * @return a nil UUID, never <code>null</code>
+   */
+  public static UUID nilUUID() {
+    return new UUID(0, 0);
+  }
 
-    /**
-     * Clones this UUID.
-     *
-     * @return a new UUID with identical values, never <code>null</code>
-     */
-    @Override
-    public Object clone() {
-        try {
-            return super.clone();
-        }
-        catch (CloneNotSupportedException ex) {
-            // One of Sun's most epic fails.
-            return null;
-        }
-    }
-
-    /**
-     * Returns the time field of the UUID (upper 64 bits).
-     *
-     * @return the time field
-     */
-    public final long getTime() {
-        return time;
-    }
-
-    /**
-     * Returns the clock and node field of the UUID (lower 64 bits).
-     *
-     * @return the clockSeqAndNode field
-     */
-    public final long getClockSeqAndNode() {
-        return clockSeqAndNode;
-    }
-
-    /**
-     * Compares two Objects for equality.
-     *
-     * @see java.lang.Object#equals(Object)
-     * @param obj the Object to compare this UUID with, may be <code>null</code>
-     * @return <code>true</code> if the other Object is equal to this UUID,
-     * <code>false</code> if not
-     */
-    @Override
-    public boolean equals(Object obj) {
-        if (!(obj instanceof UUID)) {
-            return false;
-        }
-        return compareTo((UUID) obj) == 0;
-    }
-
-    /**
-     * Returns the nil UUID (a UUID whose values are both set to zero).
-     * <p>
-     * Starting with version 2.0, this method does return a new UUID instance every
-     * time it is called. Earlier versions returned one instance. This has now been
-     * changed because this UUID has public, non-final instance fields. Returning a
-     * new instance is therefore more safe.
-     *
-     * @return a nil UUID, never <code>null</code>
-     */
-    public static UUID nilUUID() {
-        return new UUID(0, 0);
-    }
-
-    /**
-     * Dedicated method which allows UUID object to be created by jaxrs runtime.
-     *
-     * @param uuid String representation of UUID.
-     * @return UUID object.
-     */
-    public static UUID fromString(final String uuid) {
-        return new UUID(uuid);
-    }
-
+  /**
+   * Dedicated method which allows UUID object to be created by jaxrs runtime.
+   *
+   * @param uuid String representation of UUID.
+   * @return UUID object.
+   */
+  public static UUID fromString(final String uuid) {
+    return new UUID(uuid);
+  }
 }

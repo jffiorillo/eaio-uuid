@@ -5,4 +5,7 @@
 *.ipr
 *.iws
 target/
+build
+.gradle
+.idea
 
